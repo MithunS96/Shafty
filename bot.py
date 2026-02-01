@@ -82,6 +82,8 @@ async def send_reminder(channel_id, message):
         await channel.send(
             f"⏰ **Meeting Reminder (1 hour to go!)**\n{message}"
         )
-
+if not TOKEN:
+    raise RuntimeError("TOKEN environment variable not set")
 # ────── RUN BOT ──────
 bot.run(TOKEN)
+
