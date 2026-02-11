@@ -90,6 +90,14 @@ async def meeting(
             args=[meeting_id, "⏰ 15-minute reminder"]
         )
 
+        # Auto delete meeting at meeting time
+        scheduler.add_job(
+            delete_meeting,
+            "date",
+            run_date=meeting_time,
+            args=[meeting_id]
+        )
+
         await interaction.response.send_message(
             f"📅 **Meeting Scheduled**\n"
             f"🆔 ID: `{meeting_id}`\n"
@@ -118,6 +126,12 @@ async def send_reminder(meeting_id, prefix):
             f"📌 **Meeting:** {meeting['message']}"
         )
 
+# ────── AUTO DELETE MEETING ──────
+def delete_meeting(meeting_id):
+    if meeting_id in meetings:
+        meetings.pop(meeting_id)
+        print(f"🗑️ Auto-deleted meeting {meeting_id}")
+
 # ────── LIST MEETINGS ──────
 @bot.tree.command(name="meetings", description="List upcoming meetings")
 async def list_meetings(interaction: discord.Interaction):
@@ -145,16 +159,22 @@ async def cancel(interaction: discord.Interaction, meeting_id: str):
         return
 
     meetings.pop(meeting_id)
-
     scheduler.remove_all_jobs()
 
-    # Re-schedule remaining meetings (15 min reminder only)
+    # Re-schedule remaining meetings
     for mid, m in meetings.items():
         scheduler.add_job(
             send_reminder,
             "date",
             run_date=m["time"] - timedelta(minutes=15),
             args=[mid, "⏰ 15-minute reminder"]
+        )
+
+        scheduler.add_job(
+            delete_meeting,
+            "date",
+            run_date=m["time"],
+            args=[mid]
         )
 
     await interaction.response.send_message(
