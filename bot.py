@@ -1,7 +1,6 @@
 import os
 import discord
 from discord.ext import commands
-from discord import app_commands
 from dotenv import load_dotenv
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from datetime import datetime, timedelta
@@ -54,7 +53,7 @@ async def insta(
 # ────── MEETING COMMAND ──────
 @bot.tree.command(
     name="meeting",
-    description="Schedule a meeting with 24h & 1h reminders"
+    description="Schedule a meeting with a 15-minute reminder"
 )
 async def meeting(
     interaction: discord.Interaction,
@@ -81,27 +80,21 @@ async def meeting(
             "role": role_ping
         }
 
-        # 24h reminder
-        scheduler.add_job(
-            send_reminder,
-            "date",
-            run_date=meeting_time - timedelta(hours=24),
-            args=[meeting_id, "⏰ 24-hour reminder"]
-        )
+        # 15 min reminder
+        reminder_time = meeting_time - timedelta(minutes=15)
 
-        # 1h reminder
         scheduler.add_job(
             send_reminder,
             "date",
-            run_date=meeting_time - timedelta(hours=1),
-            args=[meeting_id, "⏰ 1-hour reminder"]
+            run_date=reminder_time,
+            args=[meeting_id, "⏰ 15-minute reminder"]
         )
 
         await interaction.response.send_message(
             f"📅 **Meeting Scheduled**\n"
             f"🆔 ID: `{meeting_id}`\n"
             f"🕒 {meeting_time.strftime('%d %b %Y, %I:%M %p IST')}\n"
-            f"🔔 Reminders: 24h & 1h before\n"
+            f"🔔 Reminder: 15 minutes before\n"
             f"{role_ping}"
         )
 
@@ -152,21 +145,16 @@ async def cancel(interaction: discord.Interaction, meeting_id: str):
         return
 
     meetings.pop(meeting_id)
+
     scheduler.remove_all_jobs()
 
-    # Re-schedule remaining meetings
+    # Re-schedule remaining meetings (15 min reminder only)
     for mid, m in meetings.items():
         scheduler.add_job(
             send_reminder,
             "date",
-            run_date=m["time"] - timedelta(hours=24),
-            args=[mid, "⏰ 24-hour reminder"]
-        )
-        scheduler.add_job(
-            send_reminder,
-            "date",
-            run_date=m["time"] - timedelta(hours=1),
-            args=[mid, "⏰ 1-hour reminder"]
+            run_date=m["time"] - timedelta(minutes=15),
+            args=[mid, "⏰ 15-minute reminder"]
         )
 
     await interaction.response.send_message(
@@ -175,3 +163,4 @@ async def cancel(interaction: discord.Interaction, meeting_id: str):
 
 # ────── RUN BOT ──────
 bot.run(TOKEN)
+
